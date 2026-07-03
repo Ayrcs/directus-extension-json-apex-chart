@@ -2,6 +2,12 @@
 
 Directus v12 interface extension for a `json` field. It renders JSON point data with ApexCharts and includes a manual JSON editor that emits Directus `input` events only when the text is valid JSON.
 
+![Chart](https://raw.githubusercontent.com/Ayrcs/directus-extension-json-apex-chart/refs/heads/main/docs/chart.jpeg)
+
+![JSON Editor](https://raw.githubusercontent.com/Ayrcs/directus-extension-json-apex-chart/refs/heads/main/docs/json.jpeg)
+
+![Interface settings](https://raw.githubusercontent.com/Ayrcs/directus-extension-json-apex-chart/refs/heads/main/docs/settings.jpeg)
+
 ## Install
 
 ```bash
