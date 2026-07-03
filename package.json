@@ -1,0 +1,38 @@
+{
+  "name": "directus-extension-chart-interface",
+  "version": "0.1.0",
+  "description": "Directus interface for rendering editable JSON data as ApexCharts.",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "directus-extension build -w",
+    "build": "directus-extension build",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "apexcharts": "^4.7.0"
+  },
+  "devDependencies": {
+    "@directus/extensions-sdk": "^15.0.0",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "typescript": "^5.8.3",
+    "vue": "^3.5.17",
+    "vue-tsc": "^2.2.12"
+  },
+  "directus:extension": {
+    "type": "interface",
+    "path": "dist/index.js",
+    "source": "src/index.ts",
+    "host": "^12.0.0"
+  },
+  "keywords": [
+    "directus",
+    "directus-extension",
+    "interface",
+    "chart",
+    "apexcharts"
+  ],
+  "license": "MIT"
+}
