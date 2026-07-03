@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { buildChartOptions } from './chart-options';
-import { downsamplePoints, normalizeChartValue } from './normalize';
+import { coerceChartValue, downsamplePoints, normalizeChartValue } from './normalize';
 import type { ChartInterfaceOptions, ChartType } from './types';
 import type ApexCharts from 'apexcharts';
 
@@ -38,6 +38,9 @@ const chartInstance = shallowRef<ApexCharts | null>(null);
 const editorText = ref('');
 const parseError = ref('');
 let apexChartsConstructor: typeof ApexCharts | null = null;
+let resizeObserver: ResizeObserver | null = null;
+let renderFrame: number | null = null;
+let renderRun = 0;
 
 const isReadonly = computed(() => props.disabled || props.nonEditable);
 const isEmpty = computed(() => props.value === null || props.value === undefined || props.value === '');
@@ -88,7 +91,13 @@ function formatValue(value: unknown): string {
     return JSON.stringify(exampleValue(), null, 2);
   }
 
-  return JSON.stringify(value, null, 2);
+  const coerced = coerceChartValue(value);
+
+  if (coerced.error) {
+    return String(value);
+  }
+
+  return JSON.stringify(coerced.value, null, 2);
 }
 
 function exampleValue() {
@@ -117,16 +126,47 @@ async function destroyChart(): Promise<void> {
   chartInstance.value = null;
 }
 
+function isChartElementReady(): boolean {
+  if (!chartElement.value || !chartElement.value.isConnected) return false;
+
+  const bounds = chartElement.value.getBoundingClientRect();
+  return bounds.width > 0 && bounds.height > 0;
+}
+
+async function waitForVisibleChartElement(runId: number): Promise<boolean> {
+  await nextTick();
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    if (runId !== renderRun || mode.value !== 'chart') return false;
+    if (isChartElementReady()) return true;
+
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+  }
+
+  return isChartElementReady();
+}
+
 async function renderChart(): Promise<void> {
+  const runId = ++renderRun;
+
   if (mode.value !== 'chart' || !chartElement.value || !normalized.value?.valid || !normalized.value.data) {
     await destroyChart();
     return;
   }
 
   const chartOptions = buildChartOptions(normalized.value.data, renderedPoints.value, interfaceOptions.value);
+  const isReady = await waitForVisibleChartElement(runId);
+
+  if (!isReady || !chartElement.value || runId !== renderRun) {
+    scheduleRender();
+    return;
+  }
+
   apexChartsConstructor ??= (await import('apexcharts')).default;
 
-  await nextTick();
+  if (runId !== renderRun || !chartElement.value) return;
 
   if (!chartInstance.value) {
     chartInstance.value = new apexChartsConstructor(chartElement.value, chartOptions);
@@ -136,6 +176,17 @@ async function renderChart(): Promise<void> {
 
   await chartInstance.value.updateOptions(chartOptions, false, true, false);
   await chartInstance.value.updateSeries(chartOptions.series ?? [], false);
+}
+
+function scheduleRender(): void {
+  if (renderFrame !== null) {
+    cancelAnimationFrame(renderFrame);
+  }
+
+  renderFrame = requestAnimationFrame(() => {
+    renderFrame = null;
+    void renderChart();
+  });
 }
 
 function setMode(nextMode: 'chart' | 'json'): void {
@@ -170,6 +221,7 @@ function useExample(): void {
   parseError.value = '';
   emit('input', value);
   mode.value = 'chart';
+  scheduleRender();
 }
 
 watch(
@@ -185,12 +237,45 @@ watch(
 watch(
   [mode, chartSignature],
   () => {
-    void renderChart();
+    scheduleRender();
   },
   { immediate: true, flush: 'post' },
 );
 
+watch(
+  chartElement,
+  (element) => {
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+
+    if (!element) return;
+
+    resizeObserver = new ResizeObserver(() => {
+      if (mode.value === 'chart' && normalized.value?.valid) {
+        scheduleRender();
+      }
+    });
+
+    resizeObserver.observe(element);
+    scheduleRender();
+  },
+  { flush: 'post' },
+);
+
+onMounted(() => {
+  scheduleRender();
+});
+
 onBeforeUnmount(() => {
+  renderRun += 1;
+  if (renderFrame !== null) {
+    cancelAnimationFrame(renderFrame);
+    renderFrame = null;
+  }
+
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+
   void destroyChart();
 });
 </script>
