@@ -1,6 +1,6 @@
 {
   "name": "directus-extension-chart-interface",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Directus interface for rendering editable JSON data as ApexCharts.",
   "type": "module",
   "files": [
