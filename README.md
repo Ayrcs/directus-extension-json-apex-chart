@@ -82,3 +82,6 @@ If the point count exceeds `maxRenderedPoints`, the interface downsamples the re
 - Points must contain finite numeric `x` and `y` values.
 - `name`, axis labels, and units are optional strings.
 - No backend endpoint, module, layout, panel, flow, or external storage is included.
+
+## Report issues
+Please report any issues on the [GitHub project](https://github.com/Ayrcs/directus-extension-json-apex-chart])
